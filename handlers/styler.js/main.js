@@ -1,3 +1,4 @@
+// @ts-check
 import { forceTitleFormat } from "cassidy-styler";
 import {
   UNIRedux,
@@ -100,6 +101,12 @@ export function convertLegacyStyling(style) {
     },
   };
 }
+/**
+ *
+ * @param {string} text
+ * @param  {...string} replacers
+ * @returns
+ */
 export function parseTemplate(text, ...replacers) {
   text = String(text);
   try {
@@ -134,11 +141,22 @@ export function parseTemplate(text, ...replacers) {
 
 export class CassidyResponseStyler {
   #originalX;
+  /**
+   *
+   * @param {CommandStyle} style
+   * @param {string} key
+   */
   constructor(style = {}, key = "content") {
     this.style = style;
     this.key = key;
     this.#originalX = JSON.parse(JSON.stringify(style));
   }
+  /**
+   *
+   * @param {string} text
+   * @param  {...any} templates
+   * @returns
+   */
   text(text, ...templates) {
     const self = this;
     return styled(text ?? self.style.content, {
@@ -174,6 +192,10 @@ export class CassidyResponseStyler {
 export class CassidyResponseStylerControl {
   #fields;
   #origFields;
+  /**
+   *
+   * @param {CommandStyle} fields
+   */
   constructor(fields = {}) {
     let f = fields;
     if (isClass(f)) {
@@ -235,7 +257,7 @@ export class CassidyResponseStylerControl {
       if (!field) {
         continue;
       }
-      field.changeContent(keyContent[ley], ...(templateData[key] ?? []));
+      field.changeContent(keyContent[key], ...(templateData[key] ?? []));
     }
     return this;
   }
@@ -295,6 +317,12 @@ export class CassidyResponseStylerControl {
   }
 }
 export const crs = {};
+/**
+ *
+ * @param {string} text
+ * @param {CommandStyle | { new(): CommandStyle }} StyleClass
+ * @returns
+ */
 export function styled(text = "", StyleClass) {
   const { presets } = global.Cassidy;
   text = String(text);
@@ -307,18 +335,23 @@ export function styled(text = "", StyleClass) {
         return text;
       }
       if (
-        typeof styling.titleFont === "string" ||
-        typeof styling.contentFont === "string" ||
-        typeof styling.title === "string"
+        typeof StyleClass.titleFont === "string" ||
+        typeof StyleClass.contentFont === "string" ||
+        typeof StyleClass.title === "string"
       ) {
         styling = convertLegacyStyling(JSON.parse(JSON.stringify(StyleClass)));
       } else {
         styling = JSON.parse(JSON.stringify(StyleClass));
       }
-    } else {
+    } else if (isClass(StyleClass)) {
       styling = new StyleClass();
     }
-    styling = JSON.parse(JSON.stringify(makeFieldsEnumerable(styling)));
+    /**
+     * @type {CommandStyle}
+     */
+    const parsed = JSON.parse(JSON.stringify(makeFieldsEnumerable(styling)));
+    styling = parsed;
+    const styleInfo = styling;
     if (styling.preset) {
       if (!Array.isArray(styling.preset)) {
         styling.preset = [styling.preset];
@@ -332,23 +365,30 @@ export function styled(text = "", StyleClass) {
       }
     }
     //console.log("[Received Style]", styling);
+    /**
+     * @type {CommandStyle}
+     */
     let container = {};
-    styling.title ??= {
+    styleInfo.title ??= {
       content: "",
     };
-    styling.content ??= {};
-    for (const key in styling) {
-      const ownStyling = styling[key];
+    styleInfo.content ??= {};
+    for (const key in styleInfo) {
+      /**
+       * @type {any}
+       */
+      const ownStyling = styleInfo[key];
       if (typeof ownStyling !== "object" || !ownStyling) {
         continue;
       }
       let value = ownStyling.content ?? text;
       if (ownStyling.number_font) {
-        value = numberFont(value, ownStyling.number_font);
+        // value = numberFont(value, ownStyling.number_font);
       }
       container[key] = value;
       if (Array.isArray(ownStyling.content_template)) {
         container[key] = parseTemplate(
+          // @ts-ignore
           container[key],
           ...ownStyling.content_template
         );
@@ -356,6 +396,7 @@ export function styled(text = "", StyleClass) {
       container[key] = applyLine(container[key], ownStyling);
       if (Array.isArray(ownStyling.content_template)) {
         container[key] = parseTemplate(
+          // @ts-ignore
           container[key],
           ...ownStyling.content_template
         );
@@ -363,6 +404,12 @@ export function styled(text = "", StyleClass) {
       container[key] = applyText(container[key], ownStyling);
     }
     text = "";
+    /**
+     *
+     * @param {string} key
+     * @param {string} str
+     * @returns
+     */
     function addLineHelper(key, str) {
       if (styling[key].new_line === true) {
         return str;
@@ -387,7 +434,13 @@ export function styled(text = "", StyleClass) {
     return text;
   }
 }
-export function fontNumbers(text, font) {
+/**
+ *
+ * @param {string} text
+ * @param {string} font
+ * @returns
+ */
+export function numberFont(text, font) {
   text = String(text);
   text = text
     .split("")
@@ -402,6 +455,11 @@ export function fontNumbers(text, font) {
   return text;
 }
 
+/**
+ *
+ * @param {string} text
+ * @returns
+ */
 export function autoBold(text) {
   text = String(text);
   text = text.replace(/\*\*\*(.*?)\*\*\*/g, (_, text) =>
@@ -591,8 +649,14 @@ export function applyLine(text, styling) {
 
   return text;
 }
+/**
+ *
+ * @param {object} arg
+ * @returns {arg is { new(...args: any): any }}
+ */
 export function isClass(arg) {
   return (
+    "prototype" in arg &&
     arg.prototype &&
     typeof arg.prototype.constructor === "function" &&
     typeof arg === "function"

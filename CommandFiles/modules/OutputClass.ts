@@ -13,9 +13,37 @@ import { TempFile } from "@root/handlers/page/sendMessage";
 import { base64ToStream, streamToBase64 } from "@root/webSystem";
 import { CassEXP } from "./cassEXP";
 import { inspect } from "util";
+import { CassidyResponseStylerControl } from "@cassidy/styler";
+import { FontSystem } from "cassidy-styler";
+import InputClass from "./InputClass";
+
+export interface NoEventCMDContext {
+  api: CommandContext["api"];
+  commands: CommandContext["commands"];
+  multiCommands: CommandContext["multiCommands"];
+  Cassidy: CommandContext["Cassidy"];
+  invTime: CommandContext["invTime"];
+  usersDB: CommandContext["usersDB"];
+  money: CommandContext["usersDB"];
+  threadsDB: CommandContext["threadsDB"];
+  globalDB: CommandContext["globalDB"];
+  FontSystem: CommandContext["FontSystem"];
+  fonts: CommandContext["fonts"];
+  userStat: CommandContext["userStat"];
+  icon: CommandContext["icon"];
+  allPlugins: CommandContext["allPlugins"];
+  allObj: NoEventCMDContext;
+  ctx: NoEventCMDContext;
+  output: CommandContext["output"];
+  input: CommandContext["input"];
+  styler: CommandContext["styler"];
+  event: CommandContext["event"];
+  prefix: CommandContext["prefix"];
+  stylerDummy: CommandContext["stylerDummy"];
+}
 
 export class OutputClass implements OutputProps {
-  #ctx: CommandContext;
+  #ctx: CommandContext | NoEventCMDContext;
   NO_EVENT_MODE: boolean;
 
   /**
@@ -27,18 +55,60 @@ export class OutputClass implements OutputProps {
     return this.#ctx.api;
   }
 
-  static createWithoutEvent(api: CommandContext["api"]) {
-    const output = new OutputClass({
+  static createWithoutEvent(api: CommandContext["api"], style: CommandStyle) {
+    const ctx: NoEventCMDContext = {
       api,
-    } as CommandContext);
+      commands: Cassidy.commands,
+      multiCommands: Cassidy.multiCommands,
+      Cassidy,
+      invTime: Date.now(),
+      usersDB: Cassidy.databases.usersDB,
+      money: Cassidy.databases.usersDB,
+      threadsDB: Cassidy.databases.threadsDB,
+      globalDB: Cassidy.databases.globalDB,
+      FontSystem: FontSystem,
+      fonts: FontSystem.fonts,
+      userStat: Cassidy.databases.usersDB,
+      icon: Cassidy.logo,
+      allPlugins: Cassidy.plugins,
+      output: null,
+      allObj: null,
+      ctx: null,
+      input: null,
+      styler: null,
+      event: {
+        body: "",
+        args: [],
+        attachments: [],
+        isGroup: false,
+        isUnread: false,
+        mentions: {},
+        messageID: "",
+        participantIDs: [],
+        senderID: "",
+        threadID: "",
+        type: "message",
+      },
+      stylerDummy: new CassidyResponseStylerControl({}),
+      prefix: Cassidy.config.PREFIX,
+    };
+    ctx.ctx = ctx;
+    ctx.allObj = ctx;
+    ctx.input = new InputClass(ctx as CommandContext);
+    const styler = new CassidyResponseStylerControl(style ?? {});
+    ctx.styler = styler;
+    ctx.stylerDummy = styler;
+    const output = new OutputClass(ctx);
     return output;
   }
 
-  canWorkWithEvent(_ctx: CommandContext): _ctx is CommandContext {
+  canWorkWithEvent(
+    _ctx: CommandContext | NoEventCMDContext
+  ): _ctx is CommandContext {
     return !this.NO_EVENT_MODE;
   }
 
-  constructor(ctx: CommandContext) {
+  constructor(ctx: CommandContext | NoEventCMDContext) {
     this.NO_EVENT_MODE = false;
     this.#ctx = ctx;
     this.#prepend = "";
@@ -464,6 +534,9 @@ export class OutputClass implements OutputProps {
    * @returns A promise resolving to the result of the operation.
    */
   syntaxError(commandX?: any): Promise<OutputSent> {
+    if (!this.canWorkWithEvent(this.#ctx)) {
+      throw new Error("Needs event.");
+    }
     const obj = this.#ctx;
     let cmdName = null;
     if (obj.command || commandX) {
@@ -525,7 +598,8 @@ export class OutputClass implements OutputProps {
 
   async #processOutput({ ...options }: StrictOutputForm) {
     const obj = this.#ctx;
-    const { input, command: cmd } = obj;
+    const { input } = obj;
+    const cmd = this.canWorkWithEvent(this.#ctx) ? this.#ctx.command : null;
     // @ts-ignore
     const { UserStatsLocal, money, CassEncoder } = obj;
     const command = cmd;
@@ -546,7 +620,7 @@ export class OutputClass implements OutputProps {
         options.body =
           hasS && finalName && finalName !== "Unregistered"
             ? `👤 **${finalName}**${
-                obj.command && !isOther ? ` (${obj.input.words[0]})` : ""
+                cmd && !isOther ? ` (${obj.input.words[0]})` : ""
               }\n\n${options.body}`
             : `🍃 Register with **${obj.prefix}id-setname** now!\n\n${options.body}`;
       }
@@ -1004,7 +1078,7 @@ export class OutputClass implements OutputProps {
 }
 
 export class OutputSent implements OutputResultInf {
-  #ctx: CommandContext;
+  #ctx: CommandContext | NoEventCMDContext;
 
   result: OutputResultInf;
   messageID: string;
@@ -1026,7 +1100,10 @@ export class OutputSent implements OutputResultInf {
   threadID: string;
   timestamp: number;
 
-  constructor(ctx: CommandContext, result: OutputResultInf) {
+  constructor(
+    ctx: CommandContext | NoEventCMDContext,
+    result: OutputResultInf
+  ) {
     Object.assign(this, result);
 
     this.#ctx = ctx;
