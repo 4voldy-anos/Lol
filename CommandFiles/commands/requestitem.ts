@@ -7,6 +7,7 @@ import {
   WeaponInventoryItem,
 } from "@cass-modules/cassidyUser";
 import { Datum } from "@cass-modules/Datum";
+import { Inventory } from "@cass-modules/InventoryEnhanced";
 import { UNISpectra } from "@cassidy/unispectra";
 
 export const meta: CommandMeta = {
@@ -251,10 +252,219 @@ const home = new BriefcaseAPI(
       key: "submit",
       description: "Submit a JSON of your requested item.",
       args: ["<json data>"],
-      async handler(ctx, extra, bcContext) {},
+      async handler({ output }, { spectralArgs }, bcContext) {
+        const json = spectralArgs.join(" ");
+        const validation = validateItemSubmission(json);
+
+        if (validation.success === false) {
+          return output.reply(
+            `${UNISpectra.disc} Your submission has been automatically rejected.\n\n💬 **Feedback**:\n${validation.err}`
+          );
+        }
+      },
     },
   ]
 );
+
+export function validateItemSubmission(itemStr: string | RequestInvItem):
+  | {
+      success: true;
+      item: RequestInvItem;
+    }
+  | { success: false; err: string } {
+  let item: RequestInvItem;
+  if (typeof itemStr === "string") {
+    try {
+      item = JSON.parse(itemStr);
+    } catch (error) {
+      return {
+        success: false,
+        err: `JSON Parsing failed: ${error.message}`,
+      };
+    }
+  } else {
+    item = itemStr;
+  }
+  const keys = Object.keys(item);
+  const required = ["name", "key", "icon", "flavorText", "type", "shopPrice"];
+  if (item.type === "armor") {
+    required.push("def");
+  }
+  if (item.type === "weapon") {
+    required.push("atk");
+  }
+  if (item.type === "food") {
+    required.push("heal");
+  }
+  if (item.type?.endsWith("_food")) {
+    required.push("saturation");
+  }
+  if (item.type === "zip") {
+    required.push("zipContents");
+  }
+  if (item.type === "pet") {
+    required.push("sellPrice");
+  }
+  const missing = required.filter((r) => !keys.includes(r));
+  if (missing.length > 0) {
+    return {
+      success: false,
+      err: `Missing properties:\n${missing.join(", ")}`,
+    };
+  }
+  item.name = `${item.name}`;
+  item.key = `${item.key}`;
+  item.flavorText = `${item.flavorText}`;
+  item.icon = `${item.icon}`;
+  if (!/^[a-zA-Z0-9_]+$/.test(item.key)) {
+    return {
+      success: false,
+      err: `Item key must only contain letters, numbers, and underscore.`,
+    };
+  }
+  item.icon = [...item.icon.matchAll(/\p{Emoji}/gu)]
+    .map((i) => i[0])
+    .slice(0, 2)
+    .join("\n");
+  if (item.icon.length === 0) {
+    return {
+      success: false,
+      err: "Item icon must not be empty, and must be 1-2 emojis",
+    };
+  }
+  if (item.key.length === 0) {
+    return {
+      success: false,
+      err: "Item key must not be empty",
+    };
+  }
+  if (item.name.length === 0) {
+    return {
+      success: false,
+      err: "Item name must not be empty",
+    };
+  }
+  if (item.flavorText.length === 0) {
+    return {
+      success: false,
+      err: "Item flavorText must not be empty",
+    };
+  }
+  if (item.flavorText.length > 100) {
+    return {
+      success: false,
+      err: "Item flavorText must not be longer than 100 characters.",
+    };
+  }
+  if (item.name.length > 20) {
+    return {
+      success: false,
+      err: "Item name must not be longer than 20 characters.",
+    };
+  }
+  if (item.key.length > 20) {
+    return {
+      success: false,
+      err: "Item key must not be longer than 20 characters.",
+    };
+  }
+  item.shopPrice = Number(item.shopPrice) || 0;
+  item.sellPrice = Number(item.shopPrice) || 0;
+  if (item.shopPrice <= 0) {
+    return {
+      success: false,
+      err: "Shop Price must be higher than zero.",
+    };
+  }
+  if (item.sellPrice < 0) {
+    return {
+      success: false,
+      err: "Sell Price must be higher or equal than zero.",
+    };
+  }
+  if (item.sellPrice > item.shopPrice / 2) {
+    return {
+      success: false,
+      err: "Sell Price must not be higher than half of the shop price.",
+    };
+  }
+
+  if (item.type === "armor" || item.type === "weapon") {
+    item.atk = Number(item.atk) || 0;
+    item.def = Number(item.def) || 0;
+    item.magic = Number(item.magic) || 0;
+    if (item.type === "weapon" && Number(item.atk) <= 0) {
+      return {
+        success: false,
+        err: `For weapons, the atk stat must exist and must not be lower or equal to zero.`,
+      };
+    }
+    if (item.type === "armor" && Number(item.def) <= 0) {
+      return {
+        success: false,
+        err: `For armors, the def stat must exist and must not be lower or equal to zero.`,
+      };
+    }
+  }
+
+  if (item.type === "food") {
+    item.heal = Number(item.heal) || 0;
+    if (Number(item.heal) <= 0) {
+      return {
+        success: false,
+        err: `Item heal for food must not be lower or equal to zero.`,
+      };
+    }
+  }
+  if (item.type?.endsWith("_food")) {
+    item.saturation = Number(item.saturation) || 0;
+    if (Number(item.saturation) <= 0) {
+      return {
+        success: false,
+        err: `Item saturation for food must not be lower or equal to zero.`,
+      };
+    }
+  }
+
+  if (item.type === "zip") {
+    item.zipContents = Array.isArray(item.zipContents) ? item.zipContents : [];
+    if ((item.zipContents as any[]).length === 0) {
+      return {
+        success: false,
+        err: `Zip items must have zipContents as array.`,
+      };
+    }
+    let i = 0;
+
+    for (const zipI of item.zipContents as RequestInvItem[]) {
+      i++;
+      const vali = validateItemSubmission(zipI);
+      if (vali.success === false) {
+        return {
+          success: false,
+          err: `(Zip Content #${i}): ${vali.err}`,
+        };
+      }
+    }
+  }
+
+  if (item.type === "cheque") {
+    item.chequeAmount = Number(item.chequeAmount) || 0;
+    if (Number(item.chequeAmount) <= 0) {
+      return {
+        success: false,
+        err: `The chequeAmount must be higher than zero.`,
+      };
+    }
+  }
+
+  item.uuid = Inventory.generateUUID();
+
+  return {
+    success: true,
+    item,
+  };
+}
 
 export async function entry(ctx: CommandContext) {
   home.runInContext(ctx);

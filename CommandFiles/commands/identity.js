@@ -31,7 +31,7 @@ export const style2 = {
   title: "🍃 Change User",
   titleFont: "fancy",
   contentFont: "fancy",
-  lineDeco: "altar"
+  lineDeco: "altar",
 };
 
 const { parseCurrency: pCy } = global.utils;
@@ -139,7 +139,7 @@ const home = new ReduxCMDHome(
           );
         }
 
-        if (!/^[a-zA-Z0-9 ]+$/.test(newName)) {
+        if (!/^[a-zA-Z0-9 ]+$/.test(newName) && 0) {
           return output.replyStyled(
             {
               body:
