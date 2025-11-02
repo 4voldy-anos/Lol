@@ -5,7 +5,7 @@ export const meta: CommandMeta = {
   name: "snews",
   description: "Generate a satire news image via CanvCass",
   author: "Liane Cagara",
-  version: "1.0.2",
+  version: "1.0.3",
   usage: "{prefix}{name} <headline> | [url]",
   category: "Media",
   permissions: [0],
@@ -50,7 +50,7 @@ export async function entry({
   const pfpURL = await usersDB.getAvatarURL(uid);
 
   let [argsText, bg] = input.splitArgs("|");
-  bg ||= input.replier.attachmentUrls[0];
+  bg ||= input.replier?.attachmentUrls[0];
   bg ||= pfpURL;
 
   if (!bg) {
@@ -70,133 +70,144 @@ export async function entry({
   const name = info?.name ?? userName;
 
   const headline = `${name} claims that ${argsText}`;
+  let times = 0;
 
-  try {
-    const canv = new CanvCass(720, 720);
-    const margin = 45;
+  while (true) {
+    times++;
+    try {
+      const canv = new CanvCass(720, 720);
+      const margin = 45;
 
-    const pfp = await loadImage(bg);
-    await canv.drawImage(pfp, canv.left, canv.top, {
-      height: canv.height,
-    });
-
-    const bottomHalf = CanvCass.createRect({
-      bottom: canv.bottom,
-      left: 0,
-      width: canv.width,
-      height: canv.height / 1.3,
-    });
-    const gradient = canv.createDim(bottomHalf, { color: "rgba(0,0,0,1)" });
-    canv.drawBox({ rect: bottomHalf, fill: gradient });
-    if (isBgDifferent || 1) {
-      const cw = (canv.width - margin * 2) / 3;
-
-      const circleBox = CanvCass.createRect({
-        left: canv.left + margin,
-        centerY: canv.centerY,
-        width: cw,
-        height: cw,
+      await utils.delay(500);
+      const pfp = await loadImage(bg);
+      await canv.drawImage(pfp, canv.left, canv.top, {
+        height: canv.height,
       });
 
-      const ccc: [number, number] = [circleBox.centerX, circleBox.centerY];
-      const r = cw / 2;
+      const bottomHalf = CanvCass.createRect({
+        bottom: canv.bottom,
+        left: 0,
+        width: canv.width,
+        height: canv.height / 1.3,
+      });
+      const gradient = canv.createDim(bottomHalf, { color: "rgba(0,0,0,1)" });
+      canv.drawBox({ rect: bottomHalf, fill: gradient });
+      if (isBgDifferent || 1) {
+        const cw = (canv.width - margin * 2) / 3;
 
-      const circlePath = CanvCass.createCirclePath(ccc, r);
+        const circleBox = CanvCass.createRect({
+          left: canv.left + margin,
+          centerY: canv.centerY,
+          width: cw,
+          height: cw,
+        });
 
-      await canv.drawImage(pfpURL, circleBox.left, circleBox.top, {
-        width: cw,
-        height: cw,
-        clipTo: circlePath,
+        const ccc: [number, number] = [circleBox.centerX, circleBox.centerY];
+        const r = cw / 2;
+
+        const circlePath = CanvCass.createCirclePath(ccc, r);
+        await utils.delay(500);
+
+        await canv.drawImage(pfpURL, circleBox.left, circleBox.top, {
+          width: cw,
+          height: cw,
+          clipTo: circlePath,
+        });
+
+        canv.drawCircle(ccc, r, { stroke: CanvCass.colorA, strokeWidth: 5 });
+      }
+
+      const headlineRect = CanvCass.createRect({
+        top: canv.bottom - 200,
+        left: margin,
+        width: canv.width - margin * 2,
+        height: 100,
+      });
+      canv.drawText(headline, {
+        align: "left",
+        vAlign: "top",
+        baseline: "middle",
+        fontType: "cbold",
+        size: 35,
+        fill: "white",
+        x: headlineRect.left,
+        breakTo: "top",
+        y: headlineRect.bottom,
+        breakMaxWidth: headlineRect.width,
+        yMargin: 4,
       });
 
-      canv.drawCircle(ccc, r, { stroke: CanvCass.colorA, strokeWidth: 5 });
+      const lineH = 4;
+      const lineTop = headlineRect.bottom + 20;
+      const lineLeft = margin;
+      const lineW = canv.width - margin * 2;
+
+      const lineRectA = CanvCass.createRect({
+        top: lineTop,
+        left: lineLeft,
+        width: lineW / 2,
+        height: lineH,
+      });
+      const lineRectB = CanvCass.createRect({
+        top: lineTop,
+        left: lineLeft + lineW / 2,
+        width: lineW / 2,
+        height: lineH,
+      });
+      canv.drawBox({ rect: lineRectA, fill: CanvCass.colorA });
+      canv.drawBox({ rect: lineRectB, fill: CanvCass.colorB });
+      const mm = canv.width / 4;
+
+      const logoRect = CanvCass.createRect({
+        width: canv.width - mm * 2,
+        height: 20,
+        left: canv.left + mm,
+        top: lineRectA.bottom + 10,
+      });
+      canv.drawText("CassNews", {
+        align: "left",
+        vAlign: "top",
+        fontType: "cbold",
+        size: logoRect.height,
+        x: logoRect.left,
+        y: logoRect.bottom,
+        fill: "cyan",
+      });
+      canv.drawText("News and Nonsense", {
+        align: "left",
+        vAlign: "bottom",
+        fontType: "cnormal",
+        size: 10,
+        x: logoRect.left,
+        y: logoRect.bottom + 2,
+        fill: "white",
+      });
+
+      canv.drawText("Note: This is purely a work of satire", {
+        align: "right",
+        vAlign: "top",
+        baseline: "middle",
+        fontType: "cnormal",
+        size: 15,
+        fill: "rgba(255,255,255,0.6)",
+        x: logoRect.right,
+        y: logoRect.bottom,
+      });
+
+      await output.reply({
+        body: `📰 Satire news from ***${name}***:`,
+        attachment: await canv.toStream(),
+      });
+
+      await output.unsend(i.messageID);
+      break;
+    } catch (error) {
+      if (times >= 4) {
+        return output.error(error);
+      }
+      await utils.delay(1000);
+      continue;
     }
-
-    const headlineRect = CanvCass.createRect({
-      top: canv.bottom - 200,
-      left: margin,
-      width: canv.width - margin * 2,
-      height: 100,
-    });
-    canv.drawText(headline, {
-      align: "left",
-      vAlign: "top",
-      baseline: "middle",
-      fontType: "cbold",
-      size: 35,
-      fill: "white",
-      x: headlineRect.left,
-      breakTo: "top",
-      y: headlineRect.bottom,
-      breakMaxWidth: headlineRect.width,
-      yMargin: 4,
-    });
-
-    const lineH = 4;
-    const lineTop = headlineRect.bottom + 20;
-    const lineLeft = margin;
-    const lineW = canv.width - margin * 2;
-
-    const lineRectA = CanvCass.createRect({
-      top: lineTop,
-      left: lineLeft,
-      width: lineW / 2,
-      height: lineH,
-    });
-    const lineRectB = CanvCass.createRect({
-      top: lineTop,
-      left: lineLeft + lineW / 2,
-      width: lineW / 2,
-      height: lineH,
-    });
-    canv.drawBox({ rect: lineRectA, fill: CanvCass.colorA });
-    canv.drawBox({ rect: lineRectB, fill: CanvCass.colorB });
-    const mm = canv.width / 4;
-
-    const logoRect = CanvCass.createRect({
-      width: canv.width - mm * 2,
-      height: 20,
-      left: canv.left + mm,
-      top: lineRectA.bottom + 10,
-    });
-    canv.drawText("CassNews", {
-      align: "left",
-      vAlign: "top",
-      fontType: "cbold",
-      size: logoRect.height,
-      x: logoRect.left,
-      y: logoRect.bottom,
-      fill: "cyan",
-    });
-    canv.drawText("News and Nonsense", {
-      align: "left",
-      vAlign: "bottom",
-      fontType: "cnormal",
-      size: 10,
-      x: logoRect.left,
-      y: logoRect.bottom + 2,
-      fill: "white",
-    });
-
-    canv.drawText("Note: This is purely a work of satire", {
-      align: "right",
-      vAlign: "top",
-      baseline: "middle",
-      fontType: "cnormal",
-      size: 15,
-      fill: "rgba(255,255,255,0.6)",
-      x: logoRect.right,
-      y: logoRect.bottom,
-    });
-
-    await output.reply({
-      body: `📰 Satire news from ***${name}***:`,
-      attachment: await canv.toStream(),
-    });
-
-    await output.unsend(i.messageID);
-  } catch (error) {
-    return output.error(error);
   }
 }
 
