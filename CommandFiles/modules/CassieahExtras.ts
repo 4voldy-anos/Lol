@@ -10,6 +10,8 @@ import {
   SKRSContext2D,
   createCanvas,
   loadImage,
+  loadImage as loadImageOrig,
+  LoadImageOptions,
 } from "@napi-rs/canvas";
 import { randomUUID } from "crypto";
 import {
@@ -751,9 +753,6 @@ export class CanvCass implements CanvCass.Rect {
     return path;
   }
 
-  loadImage = loadImage;
-  static loadImage = loadImage;
-
   #processFont(options: Partial<CanvCass.DrawTextParam>) {
     if (!options.cssFont) {
       options.fontType ??= "cnormal";
@@ -923,7 +922,7 @@ export class CanvCass implements CanvCass.Rect {
     if (typeof imageOrSrc !== "string" && "onload" in imageOrSrc) {
       image = imageOrSrc;
     } else {
-      image = await loadImage(imageOrSrc);
+      image = await CanvCass.loadImage(imageOrSrc);
     }
 
     ctx.save();
@@ -1112,4 +1111,29 @@ export namespace CanvCass {
   }
 
   export type Color = string | CanvasGradient;
+
+  export async function loadImage(
+    source:
+      | string
+      | URL
+      | Buffer
+      | ArrayBufferLike
+      | Uint8Array
+      | Image
+      | import("stream").Readable,
+    options?: LoadImageOptions
+  ): Promise<Image> {
+    const tries = 5;
+    let i = 0;
+    while (i <= tries) {
+      i++;
+      try {
+        return loadImageOrig(source, options);
+      } catch (error) {
+        console.error(error);
+        await utils.delay(500);
+        continue;
+      }
+    }
+  }
 }
