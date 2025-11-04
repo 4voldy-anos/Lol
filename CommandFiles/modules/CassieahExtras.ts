@@ -1293,6 +1293,13 @@ export class CanvCass implements CanvCass.Rect {
       ctx.clip(options.clipTo);
     }
 
+    if (options.left) {
+      left = options.left;
+    }
+    if (options.top) {
+      top = options.top;
+    }
+
     let width = options?.width;
     let height = options?.height;
 
@@ -1325,8 +1332,18 @@ export class CanvCass implements CanvCass.Rect {
       });
       ctx.clip(CanvCass.rectToPath(r));
     }
-
-    ctx.drawImage(image, left, top, drawWidth, drawHeight);
+    ctx.drawImage(
+      image,
+      options.sourceOffsetLeft ?? 0,
+      options.sourceOffsetTop ?? 0,
+      options.cropWidth ?? image.width,
+      options.cropHeight ?? image.height,
+      left,
+      top,
+      drawWidth,
+      drawHeight
+    );
+    // ctx.drawImage(image, left, top, drawWidth, drawHeight);
 
     ctx.restore();
   }
@@ -1529,6 +1546,12 @@ export namespace CanvCass {
     height?: number;
     clipTo?: Path2D;
     maximizeFit?: boolean;
+    cropWidth?: number;
+    cropHeight?: number;
+    sourceOffsetLeft?: number;
+    sourceOffsetTop?: number;
+    left?: number;
+    top?: number;
   }
 
   /**
