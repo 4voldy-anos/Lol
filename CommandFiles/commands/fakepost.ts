@@ -77,7 +77,7 @@ export async function entry({
       const pfps = 70;
       const margin = 20;
       const margin2 = 10;
-      const ym = 5;
+      const ym = 3;
       const header = CanvCass.createRect({
         height: pfps + margin * 2,
         width: canv.width - margin * 2,
@@ -137,6 +137,7 @@ export async function entry({
         size: 25,
         fontType: "cbold",
         fill: "white",
+        fontFamily: "Roboto-Bold",
       });
       canv.drawText(`${randomInt(1, 12)}h  •  Public`, {
         vAlign: "bottom",
@@ -146,6 +147,7 @@ export async function entry({
         size: 20,
         fontType: "cnormal",
         fill: lw,
+        fontFamily: "Roboto-Regular",
       });
       canv.drawText(`•••`, {
         vAlign: "top",
@@ -155,6 +157,7 @@ export async function entry({
         size: 20,
         fontType: "cnormal",
         fill: lw,
+        fontFamily: "Roboto-Regular",
       });
 
       const captionTxtsize = 48;
@@ -188,8 +191,10 @@ export async function entry({
           size: captionTxtsize,
           fontType: "cbold",
           breakTo: "center",
+          fontFamily: "Roboto-Bold",
           breakMaxWidth: wallImg.width - margin * 2,
           fill: "rgba(255, 255, 255, 1)",
+          yMargin: 5,
         });
       });
 

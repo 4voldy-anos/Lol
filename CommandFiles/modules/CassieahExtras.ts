@@ -48,6 +48,15 @@ export class CanvCass implements CanvCass.Rect {
    */
   static async singleSetup() {
     logger("Registering fonts...", "CanvCass");
+
+    this.registerFont({
+      name: "Roboto-Regular",
+      path: "./public/Roboto-Regular.woff",
+    });
+    this.registerFont({
+      name: "Roboto-Bold",
+      path: "./public/Roboto-Bold.woff",
+    });
     this.registerFont({
       name: "EMOJI",
       path: "./public/NotoColorEmoji.ttf",
@@ -785,6 +794,16 @@ export class CanvCass implements CanvCass.Rect {
     });
   }
 
+  #currentFamily?: string = "";
+
+  setFont(family: string): void {
+    this.#currentFamily = family;
+  }
+
+  resetFont() {
+    this.#currentFamily = "";
+  }
+
   /**
    * Another High-Level function that fills text and breaking the text automatically if a width is specified.
    * @param text The content
@@ -1074,17 +1093,17 @@ export class CanvCass implements CanvCass.Rect {
       options.size ??= 50;
       if (options.fontType === "cbold") {
         options.cssFont = `bold ${options.size}px ${
-          options.fontFamily ?? `Cassieah-Bold`
+          options.fontFamily || this.#currentFamily || `Cassieah-Bold`
         }, EMOJI, sans-serif`;
       }
       if (options.fontType === "cnormal") {
         options.cssFont = `normal ${options.size}px ${
-          options.fontFamily ?? `Cassieah`
+          options.fontFamily || this.#currentFamily || `Cassieah`
         }, EMOJI, sans-serif`;
       }
       if (options.fontType === "auto") {
         options.cssFont = `${options.size}px ${
-          options.fontFamily ?? `Cassieah`
+          options.fontFamily || this.#currentFamily || `Cassieah`
         }, EMOJI, sans-serif`;
       }
     }
