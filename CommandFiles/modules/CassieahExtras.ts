@@ -395,7 +395,9 @@ export class CanvCass implements CanvCass.Rect {
   /**
    * Draws or paints a box or a rectangular 2d shape with the specificed rect and fill/stroke.
    */
-  drawBox(style?: { rect: CanvCass.Rect } & Partial<CanvCass.DrawParam>): void;
+  drawBox(
+    style?: { rect: CanvCass.Rect } & Partial<CanvCass.DrawBoxParam>
+  ): void;
 
   /**
    * Draws or paints a box or a rectangular 2d shape with the specificed rect-creation config and fill/stroke.
@@ -416,7 +418,7 @@ export class CanvCass implements CanvCass.Rect {
   drawBox(
     arg1:
       | number
-      | ({ rect: CanvCass.Rect } & Partial<CanvCass.DrawParam>)
+      | ({ rect: CanvCass.Rect } & Partial<CanvCass.DrawBoxInlineParam>)
       | CanvCass.DrawBoxInlineParam,
     arg2?: number | Partial<CanvCass.DrawBoxInlineParam>,
     arg3?: number,
@@ -424,7 +426,7 @@ export class CanvCass implements CanvCass.Rect {
     arg5?: Partial<CanvCass.DrawBoxInlineParam>
   ): void {
     let rect: CanvCass.Rect;
-    let style: CanvCass.DrawParam = {};
+    let style: CanvCass.DrawBoxParam = {};
 
     if (
       typeof arg1 === "number" &&
@@ -460,17 +462,22 @@ export class CanvCass implements CanvCass.Rect {
     const ctx = this.#context;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(rect.left, rect.top, rect.width, rect.height);
+    let path: Path2D;
+    if (typeof style.cornerRadius !== "number") {
+      path = CanvCass.rectToPath(rect);
+    } else {
+      path = CanvCass.createCorneredRectPath(style.cornerRadius, rect);
+    }
 
     if (style.stroke) {
       ctx.strokeStyle = style.stroke;
       ctx.lineWidth = Number(style.strokeWidth ?? "1");
-      ctx.stroke();
+      ctx.stroke(path);
     }
 
     if (style.fill) {
       ctx.fillStyle = style.fill;
-      ctx.fill();
+      ctx.fill(path);
     }
 
     ctx.restore();
@@ -1533,7 +1540,9 @@ export namespace CanvCass {
     strokeWidth?: number;
   }
 
-  export type DrawBoxInlineParam = DrawParam & MakeRectParam;
+  export type DrawBoxInlineParam = DrawParam &
+    MakeRectParam & { cornerRadius?: number };
+  export type DrawBoxParam = DrawParam & { cornerRadius?: number };
 
   export interface Rect {
     width: number;
