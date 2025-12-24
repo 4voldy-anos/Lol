@@ -962,9 +962,10 @@ export class CanvCass implements CanvCass.Rect {
       modY -= size;
     }
 
+    let lastLine = linePos.length > 0 ? linePos.at(-1)[1] : ty;
     const rect = CanvCass.createRect({
       width: maxWidth,
-      height: Math.abs(modY - linePos.at(-1)[1]),
+      height: Math.abs(modY - lastLine),
       ...(breakTo === "bottom"
         ? {
             top: origY,

@@ -39,7 +39,7 @@ const command = defineCommand({
     contentFont: "fancy",
     topLine: "thin",
   },
-  async entry({ event, api, output, input }: CommandContext) {
+  async entry({ event, api, output, input }) {
     const form = {
       av: api.getCurrentUserID(),
       fb_api_req_friendly_name:
